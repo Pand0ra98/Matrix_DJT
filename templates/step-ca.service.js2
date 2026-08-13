@@ -1,0 +1,29 @@
+[Unit]
+Description=Smallstep Certificate Authority
+Documentation=https://smallstep.com/docs/step-ca/
+After=network-online.target
+Wants=network-online.target
+
+
+[Service]
+Type=simple
+
+
+User=step-ca
+Group=step-ca
+
+
+Environment=STEPPATH=/var/lib/step-ca/.step
+
+
+ExecStart=/usr/bin/step-ca \
+    /var/lib/step-ca/.step/config/ca.json \
+    --password-file /var/lib/step-ca/passwort.txt
+
+
+Restart=on-failure
+RestartSec=5
+
+
+[Install]
+WantedBy=multi-user.target

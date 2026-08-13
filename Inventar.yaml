@@ -1,0 +1,20 @@
+App:
+  hosts:
+    matrix-app-01:
+      ansible_host: 10.31.42.121
+      ansible_user: admin001
+
+DB:
+  hosts:
+    matrix-db-01:
+      ansible_host: 10.31.42.120
+      ansible_user: admin001
+
+CA:
+  hosts:
+    matrix-ca-01:
+      ansible_host: 10.31.42.126
+      ansible_user: admin001
+    matrix-ca-02:
+      ansible_host: 10.31.42.132
+      ansible_user: admin001

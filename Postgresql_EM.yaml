@@ -1,0 +1,75 @@
+---
+- name: Einrichten der Postgressql Datenbank
+  hosts: DB
+  vars_files: 
+    - ./vars/credentials.yaml
+  tasks:
+
+    - name: Install Pakete
+      tags: Pak_Install
+      become: true
+      become_method: ansible.builtin.sudo
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - wget
+        - curl
+        - vim
+        - rsync
+        - postgresql
+        - apt-transport-https
+        - lsb-release
+        - python3-psycopg
+        - acl
+
+    - name: Datenbankbenutzer anlegen
+      tags: dbu
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_user:
+        name: "{{ DB_USER }}"           #ist in der verschlüsselten ./vars/credentials.yaml definiert.
+        password: "{{ DB_PASS }}"
+        state: present
+        login_unix_socket: /var/run/postgresql
+
+
+    - name: Datenbank für Matrix anblegen
+      become: true
+      become_user: postgres
+      community.postgresql.postgresql_db:
+        name: synapse
+        encoding: UTF8
+        template: template0
+        owner: "{{ DB_USER }}"
+        lc_collate: C
+        lc_ctype: C
+
+    - name: Postgresql konfigurieren
+      become: true
+      tags: tets
+      block:
+        - name: Anpassen, auf welchen addressen postgres lauscht
+          ansible.builtin.lineinfile:
+            search_string: "#listen_addresses = 'localhost'"
+            create: false
+            path: /etc/postgresql/17/main/postgresql.conf
+            owner: postgres
+            group: postgres
+            mode: "0644"
+            line: "listen_addresses = '*'"
+        - name: App server zugriff zur Datenbank geben
+          ansible.builtin.lineinfile:
+            create: false
+            path: /etc/postgresql/17/main/pg_hba.conf
+            owner: postgres
+            group: postgres
+            mode: "0640"
+            line: "host\tsynapse\t\tsynapse_user\t10.31.42.121/32\t\tscram-sha-256"
+
+        - name: Reload Postgresql
+          become: true
+          ansible.builtin.service:
+            name: postgresql
+            state: restarted

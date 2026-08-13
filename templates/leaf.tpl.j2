@@ -1,0 +1,15 @@
+{% raw %}
+{
+    "subject": {{ toJson .Subject }},
+    "sans": {{ toJson .SANs }},
+{{- if typeIs "*rsa.Pubkey" .Insecure.CR.Pubkey }}
+    "keyUsage": ["keyEncipherment", "digitalSignature"],
+{{- else }}
+    "keyUsage": ["digitalSignature"],
+{{-end }}
+    "extKeyUsage": ["serverAuth"],
+    "crlDistributionPoints": [
+        "http://ca.lan:9001/1.0/crl"
+    ]
+}
+{% endraw %}

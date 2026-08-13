@@ -1,0 +1,11 @@
+{
+    "Subject": {{ "{{ toJson .Subjetc }}" }},
+    "keyUsage": ["certSign", "crlSign"],
+    "basicConstrains": {
+        "isCA": true,
+        "maxPathLen": 0
+    },
+    "crlDistributionsPoints": [
+        "http://ca.lan:9001/1.0/crl"
+    ]
+}

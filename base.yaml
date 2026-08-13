@@ -1,0 +1,64 @@
+---
+- name: Vorbereitung der VMs
+  hosts: matrix-ca-02
+  remote_user: root
+
+  tasks:
+    - name: Erreichbarkeit Prüfen
+      ansible.builtin.ping:
+      tags: conntest
+
+    - name: Übertragen SSH-Keys
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ item }}"
+        exclusive: true
+      loop:
+        - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC32odfea+4HISxVhq5mkHpSAKOOWBPxBsyAjnb/v0UJ panschuetz@TJM-07645"
+
+
+    - name: Install Sudo
+      become: true
+      become_method: ansible.builtin.su
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - sudo
+        state: present
+
+    - name: Admin zur gruppe Sudo hinzufügen
+      become: true
+      become_method: ansible.builtin.su
+      ansible.builtin.user:
+        name: admin001
+        groups: sudo
+        append: true
+
+    - name: Aktivieren des pubkey login
+      become_method: ansible.builtin.su
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        create: false
+        line: PubkeyAuthentication yes
+        search_string: '#PubkeyAuthentication yes'
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: SSH Dienst neustarten
+      become: true
+      become_method: ansible.builtin.su
+      ansible.builtin.service:
+        name: sshd
+        state: restarted
+      notify: Server-neustarten
+
+
+  handlers:
+    - name: Server neustarten
+      become: true
+      become_method: ansible.builtin.su
+      ansible.builtin.reboot:
+        msg: "Neustart durch Ansible, sehe playbook base.yaml."
+      listen: "Server-neustarten"

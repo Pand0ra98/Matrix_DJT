@@ -1,0 +1,184 @@
+---
+- name: Einrichtung des Synapse Server
+  hosts: App
+  vars:
+    matrix_domain: matrix.djt.lan
+  vars_files:
+    - ./vars/credentials.yaml
+  tasks:
+    - name: Packete installieren
+      become: true
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - wget
+        - curl
+        - apt-transport-https
+        - vim
+        - caddy
+        - rsync
+        - lsb-release
+
+    - name: Import quelle
+      tags: test
+      become: true
+      ansible.builtin.deb822_repository:
+        name: matrix-org
+        types:
+          - deb
+        uris:
+          - https://packages.matrix.org/debian
+        suites:
+          - "{{ ansible_facts['distribution_release'] }}"
+        components:
+          - main
+        signed_by: https://packages.matrix.org/debian/matrix-org-archive-keyring.gpg
+        state: present
+
+
+    - name: Import Quelle für Step-CA
+      become: true
+      tags: ca
+      ansible.builtin.deb822_repository:
+        name: smallstep
+        types:
+          - deb
+        uris:
+          - https://packages.smallstep.com/stable/debian
+        suites:
+          - debs
+        components:
+          - main
+        signed_by: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+        state: present
+
+    - name: Update packetquellen
+      tags: Installv2
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: full
+
+    - name: Install Synpase Server und step-cli
+      tags: Installv2
+      become: true
+      ansible.builtin.apt:
+        name:
+          - matrix-synapse-py3
+          - step-cli
+        state: present
+
+    - name: Synapse Servername Setzen
+      become: true
+      ansible.builtin.debconf:
+        name: matrix-synapse-py3
+        question: matrix-synapse/server-name
+        value: matrix.djt.lan
+        vtype: string
+
+    - name: Statistik deaktiveren
+      become: true
+      ansible.builtin.debconf:
+        name: matrix-synapse-py3
+        question: matrix-synapse/report-state
+        value: "false"
+        vtype: boolean
+
+
+    - name: Konigurationdatein anlegen
+      become: true
+      tags: copy-test
+      block:
+        - name: Datenbank Komfig anlegen
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/conf.d/database.yaml
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0640"
+            content: |
+              database:
+                  name: psycopg2
+                  args:
+                      user: "{{ DB_USER }}"
+                      password: "{{ DB_PASS }}"
+                      dbname: synapse
+                      host: 10.31.42.120
+                      cp_min: 5
+                      cp_max: 10
+        - name: Listener Konfig anlegen
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/conf.d/listener.yaml
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0640"
+            content: |
+              listeners:
+              - port: 8008
+                tls: false
+                type: http
+                bind_addresses:
+                  - '0.0.0.0'
+                x_forearded: false
+                resources:
+                  - names:
+                    - client
+                    compress: false
+        - name: Secret anlegen
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/registration_shared_secret.txt
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0600"
+            content: "{{ A_SECRET }}"
+
+        - name: Regestierung von außerhalb deaktiveren
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/conf.d/registration.yaml
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0640"
+            content: |
+              enable_registration: false
+              registration_shared_secret_path: "/etc/matrix-synapse/registration_shared_secret.txt"
+
+        - name: Restart Synapse-Server
+          become: true
+          ansible.builtin.service:
+            name: matrix-synapse
+            state: restarted
+
+    - name: Admin anlegen
+      tags: addADM
+      become: true
+      ansible.builtin.command:
+        argv:
+          - register_new_matrix_user
+          - -c
+          - /etc/matrix-synapse/conf.d/registration.yaml
+          - --user
+          - "{{ MATRIX_ADMIN_NAME }}"
+          - --password
+          - "{{ MATRIX_ADMIN_PW }}"
+          - --admin
+          - --exists-ok
+          - http://localhost:8008
+      register: matrix_user_registration
+      no_log: false
+      changed_when: "'Success!' in matrix_user_registration.stdout"
+
+    - name: Caddy konfigurieren
+      become: true
+      ansible.builtin.template:
+        dest: /etc/caddy/Caddyfile
+        src: ./templates/Caddyfile.js2
+        owner: root
+        group: root
+        mode: "0644"
+        validate: "caddy validate --adapter caddyfile --config %s"
+
+    - name: Reload Caddy
+      become: true
+      ansible.builtin.service:
+        name: caddy.service
+        state: restarted

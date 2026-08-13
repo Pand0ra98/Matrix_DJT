@@ -1,0 +1,171 @@
+---
+- name: Installation des Synapse server mit sqllite
+  hosts: App
+  vars:
+    matrix_domain: matrix.pan-lab.de
+  vars_files:
+    - ./vars/credentials.yaml
+
+  tasks:
+    - name: Packete installieren
+      become: true
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - wget
+        - curl
+        - apt-transport-https
+        - vim
+        - caddy
+        - rsync
+        - lsb-release
+
+    - name: Import quelle
+      tags: test
+      become: true
+      ansible.builtin.deb822_repository:
+        name: matrix-org
+        types:
+          - deb
+        uris:
+          - https://packages.matrix.org/debian
+        suites:
+          - "{{ ansible_facts['distribution_release'] }}"
+        components:
+          - main
+        signed_by: https://packages.matrix.org/debian/matrix-org-archive-keyring.gpg
+        state: present
+
+    - name: Update packetquellen
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: full
+
+    - name: Synapse Servername Setzen
+      become: true
+      ansible.builtin.debconf:
+        name: matrix-synapse-py3
+        question: matrix-synapse/server-name
+        value: matrix.pan-lab.de
+        vtype: string
+
+    - name: Statistik deaktiveren
+      become: true
+      ansible.builtin.debconf:
+        name: matrix-synapse-py3
+        question: matrix-synapse/report-state
+        value: "false"
+        vtype: boolean
+
+    - name: Install Synpase Server
+      become: true
+      ansible.builtin.apt:
+        name:
+          - matrix-synapse-py3
+        state: present
+
+    - name: Synapse konfigurieren
+      become: true
+      tags: copy-test
+      block:
+        - name: Datenbank Komfig anlegen
+          notify: Restart Synapse
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/conf.d/database.yaml
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0640"
+            content: |
+              database:
+                name: sqlite3
+                args:
+                  database: /var/lib/matrix-synapse/homeserver.db
+
+        - name: Listener Konfig anlegen
+          notify: Restart Synapse
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/conf.d/listener.yaml
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0640"
+            content: |
+              listeners:
+              - port: 8008
+                tls: false
+                type: http
+                bind_addresses:
+                  - '127.0.0.1'
+                x_forwarded: true
+                resources:
+                  - names:
+                      - client
+                    compress: false
+
+        - name: Secret anlegen
+          notify: Restart Synapse
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/registration_shared_secret.txt
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0600"
+            content: "{{ A_SECRET }}"
+
+        - name: Regestierung von außerhalb deaktiveren
+          notify: Restart Synapse
+          ansible.builtin.copy:
+            dest: /etc/matrix-synapse/conf.d/registration.yaml
+            owner: matrix-synapse
+            group: matrix-synapse
+            mode: "0640"
+            content: |
+              enable_registration: false
+              registration_shared_secret_path: "/etc/matrix-synapse/registration_shared_secret.txt"
+
+    - ansible.builtin.meta: flush_handlers
+
+    - name: Admin anlegen
+      tags: addADM
+      become: true
+      ansible.builtin.command:
+        argv:
+          - register_new_matrix_user
+          - -c
+          - /etc/matrix-synapse/conf.d/registration.yaml
+          - --user
+          - admin002
+          - --password
+          - "{{ MATRIX_ADMIN_PW }}"
+          - --admin
+          - --exists-ok
+          - http://localhost:8008
+      register: matrix_user_registration
+      no_log: false
+      changed_when: "'Success!' in matrix_user_registration.stdout"
+
+    - name: Caddy konfigurieren
+      notify: Reload Caddy
+      become: true
+      ansible.builtin.template:
+        dest: /etc/caddy/Caddyfile
+        src: ./templates/Caddyfile.js2
+        owner: root
+        group: root
+        mode: "0644"
+        validate: "caddy validate --adapter caddyfile --config %s"
+
+    
+  handlers:
+    - name: Restart Synapse
+      become: true
+      ansible.builtin.service:
+        name: matrix-synapse
+        state: restarted
+    
+    - name: Reload Caddy
+      become: true
+      ansible.builtin.service:
+        name: caddy
+        state: restarted
+      listen: Reload Caddy

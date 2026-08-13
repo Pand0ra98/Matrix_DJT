@@ -1,0 +1,16 @@
+{{ matrix_domain }}  {
+
+    tls /etc/caddy/certs/matrix.djt.lan.crt /etc/caddy/certs/matrix.djt.lan.key
+
+    respond /.well-known/matrix/client `{
+        "m.homeserver": {
+        "base_url": "https://matrix.djt.lan"
+        }
+    }` 200
+
+    reverse_proxy 127.0.0.1:8008 {
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+}

@@ -1,0 +1,166 @@
+---
+- name: Installation und einruchtung der CA.
+  hosts: CA
+  become: true
+  vars_files: 
+    - ./vars/credentials.yaml
+  tasks:
+    - name: Installation von Paketen
+      become: true
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - wget
+        - curl
+        - apt-transport-https
+        - vim
+        - caddy
+        - rsync
+        - lsb-release
+        - gpg
+        - ca-certificates
+
+    - name: Import quelle
+      tags: test
+      become: true
+      ansible.builtin.deb822_repository:
+        name: smallstep
+        types:
+          - deb
+        uris:
+          - https://packages.smallstep.com/stable/debian
+        suites:
+          - debs
+        components:
+          - main
+        signed_by: https://packages.smallstep.com/keys/apt/repo-signing-key.gpg
+        state: present
+
+    - name: Update Cache
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: full
+
+    - name: Install Step-CA
+      ansible.builtin.apt:
+        name:
+          - step-cli
+          - step-ca
+        state: present
+
+    - name: CA User anlegen
+      become: true
+      ansible.builtin.user:
+        name: step-ca
+        system: true
+        home: /var/lib/step-ca
+        create_home: true
+        shell: /usr/sbin/nologin
+
+    - name: PW File anlegen
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/step-ca/passwort.txt
+        mode: "600"
+        owner: step-ca
+        group: step-ca
+        state: absent
+
+    - name: Passwort datei für Step-CA Admin
+      become: true
+      ansible.builtin.template:
+        dest: /var/lib/step-ca/passwort.txt
+        src: ./templates/password.js2
+        mode: "600"
+        group: step-ca
+        owner: step-ca
+
+    - name: CA initialisieren
+      ansible.builtin.command:
+        argv:
+          - step
+          - ca
+          - init
+
+    - name: Installation des Service
+      become: true
+      ansible.builtin.template:
+        src: ./templates/step-ca.service.js2
+        dest: /etc/systemd/system/step-ca.service
+        owner: root
+        group: root
+        mode: "0644"
+
+
+    - name: Aktiviere und starte step-ca.service
+      become: true
+      ansible.builtin.systemd:
+        name: step-ca
+        enabled: true
+        state: started
+
+    - name: Reload systemd
+      become: true
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Restart step-ca
+      become: true
+      ansible.builtin.systemd:
+        name: step-ca
+        state: restarted
+
+    - name: Fingerprint erzeugen
+      become: true
+      ansible.builtin.command:
+        cmd: sudo step certificate fingerprint /var/lib/step-ca/.step/certs/root_ca.crt
+      register: fprint
+
+    - name: Fingerprint in datei schreiben
+      ansible.builtin.copy:
+        content: "{{ fprint.stdout }}\n"
+        dest: "/home/{{ ansible_user }}/fprint.txt"
+        mode: "0644"
+
+    - name: datei zwichen partken
+      ansible.builtin.fetch:
+        src: "/home/{{ ansible_user }}/fprint.txt"
+        dest: /tmp/
+        flat: true
+      delegate_to: matrix-ca-01
+
+    - name: transfer zu matrix-app-01
+      ansible.builtin.copy:
+        src: /tmp/fprint.txt
+        dest: /home/{{ ansible_user }}/fprint.txt
+      delegate_to: matrix-app-01 
+
+    - name: update ca-admin
+      notify: restart stepca
+      become: true
+      become_user: step-ca
+      environment:
+        HOME: /var/lib/step-ca
+      ansible.builtin.command:
+        argv:
+          - step
+          - ca
+          - provisioner 
+          - update 
+          - ca-admin 
+          - --x509-max-dur 
+          - 8760h 
+          - --x509-default-dur 
+          - 2160h 
+          - --ca-url 
+          - https://ca.lan 
+          - --root 
+          - /var/lib/step-ca/.step/certs/root_ca.crt
+
+  handlers:
+    - name: step-ca neustarten
+      ansible.builtin.service:
+        name: step-ca
+        state: restarted
+      listen: restart stepca

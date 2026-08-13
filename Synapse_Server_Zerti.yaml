@@ -1,0 +1,82 @@
+---
+- name: Zertifikat für Matrix Server
+  hosts: App
+  vars_files: 
+    - ./vars/credentials.yaml
+
+  tasks:
+    - name: Fingerprint einlesen
+      ansible.builtin.slurp:
+        src: /home/{{ ansible_user }}/fprint.txt
+      register: fingerprint
+
+    - name: Prüfen, ob Root-CA vorhanden ist
+      ansible.builtin.stat:
+        path: /home/admin001/.step/certs/root_ca.crt
+      register: root_ca
+
+    - name: Root Zertifikat importieren
+      ansible.builtin.command:
+        argv:
+          - step
+          - ca
+          - bootstrap
+          - --ca-url
+          - https://ca.lan:8443
+          - --fingerprint
+          - "{{ fingerprint.content | b64decode | trim }}"
+          - --force
+      when: not root_ca.stat.exists
+
+
+    - name: Erstelle Tempfile für PW
+      tags: PW
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .step-pass
+      register: step_pass_file
+      no_log: true
+
+    - name: Schreibe das Provisionier Password
+      tags: PW
+      ansible.builtin.copy:
+        dest: /home/{{ ansible_user }}/.step/pw.txt
+        content: "{{ step_ca_PW }}"
+        mode: "0600"
+      no_log: true
+
+    - name: Erstellung Zerifikat für Matrix Server
+      ansible.builtin.command:
+        argv:
+          - step
+          - ca
+          - certificate
+          - matrix.djt.lan
+          - matrix.djt.lan.crt
+          - matrix.djt.lan.key
+          - --not-after=2160h
+          - --provisioner-password-file
+          - /home/{{ ansible_user }}/.step/pw.txt
+
+    - name: Zertifikats Orfer für Caddy anlegen
+      become: true
+      ansible.builtin.file:
+        state: directory
+        path: /etc/caddy/certs
+        owner: root
+        group: caddy
+        mode: "0750"
+        force: true
+
+    - name: Kopiere Zertifikats datein ins caddy verteichnis
+      become: true
+      ansible.builtin.copy:
+        src: "{{ item }}"
+        remote_src: true
+        dest: /etc/caddy/certs/
+        mode: "640"
+        owner: root
+        group: caddy
+      loop:
+        - /home/{{ ansible_user }}/matrix.djt.lan.crt
+        - /home/{{ ansible_user }}/matrix.djt.lan.key
