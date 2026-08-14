@@ -20,7 +20,7 @@
         - rsync
         - lsb-release
 
-    - name: Import quelle
+    - name: Import quelle Matrix Server
       tags: test
       become: true
       ansible.builtin.deb822_repository:
