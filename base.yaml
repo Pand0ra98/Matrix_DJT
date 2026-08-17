@@ -32,6 +32,7 @@
         - btop
         - acl
         - vim
+        - qemu-guest-agent
 
     - name: Admin zur gruppe Sudo hinzufügen
       become: true
