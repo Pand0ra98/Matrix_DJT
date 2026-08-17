@@ -1,0 +1,80 @@
+---
+- name: Installation Nginx + achme.sh
+  hosts: matrix-app-01
+  become: true
+
+  tasks:
+    - name: Update packete und quellen
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+
+    - name: Entfernen von Caddy.
+      become: true
+      block:
+        - name: Stopp Caddy.
+          ansible.builtin.systemd_service:
+            name: caddy
+            state: stopped
+            enabled: false
+
+        - name: Backup Caddy
+          community.general.archive:
+            dest: /root/caddy.gz
+            format: gz
+            path: /etc/caddy/Caddyfile
+            mode: "0600"
+            owner: root
+            group: root
+
+        - name: Caddy Deinstallieren
+          ansible.builtin.apt:
+            name:
+              - caddy
+            state: absent
+
+    - name: Install Nginx
+      ansible.builtin.apt:
+        name:
+          - nginx
+          - curl
+        state: present
+
+    - name: Download achem.sh
+      ansible.builtin.get_url:
+        url: https://get.acme.sh
+        dest: /tmp/get.acme.sh-install.sh
+        mode: "0755"
+
+    - name: Achme.sh installieren
+      ansible.builtin.command:
+        argv:
+          - /bin/sh
+          - /tmp/get.acme.sh-install.sh
+          - --install
+          - --"email={{ EMC }}"
+          - --nocron
+        creates: /root/.acme.sh/acme.sh
+
+    - name: Let's Encrypt als Standard-CA setzen
+      ansible.builtin.command:
+        argv:
+          - /root/.acme.sh/acme.sh
+          - --set-default-ca
+          - --server
+          - letsencrypt
+      register: acme_default_ca
+      changed_when: "'Changed default CA' in acme_default_ca.stdout"
+
+    - name: Acme.sh version prüfen
+      ansible.builtin.command:
+        argv:
+          - /root/.acme.sh/acme.sh
+          - --version
+      register: acme_verison
+      changed_when: false
+
+    - name: Acme.sh Versin anzeigen
+      ansible.builtin.debug:
+        var: acme_verison.stdout
