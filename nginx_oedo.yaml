@@ -1,6 +1,7 @@
 ---
 - name: Installation Nginx + achme.sh
   hosts: matrix-app-01
+  vars_files: ./vars/credentials.yaml
   become: true
 
   tasks:
