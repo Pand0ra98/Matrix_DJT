@@ -78,30 +78,34 @@
         url: https://github.com/traefik/traefik/releases/download/v3.7.10/traefik_v3.7.10_linux_amd64.tar.gz
         dest: /tmp/traefik.tat.gz
         mode: "0644"
-    - name: Traefik Entpacken
-      ansible.builtin.unarchive:
-        src: /tmp/traefik.tat.gz
-        dest: /tmp
-        remote_src: true
-    - name: Traefik Binry instalieren
-      ansible.builtin.copy:
-        remote_src: true
-        src: /tmp/traefik
-        dest: /usr/local/bin/traefik
-        owner: root
-        group: root
-        mode: "0755"
-    - name: Traefik Version prüfen
-      ansible.builtin.command:
-        argv:
-          - /usr/local/bin/traefik
-          - version
-      register: traefik_version_output
-      changed_when: false
+        register: traefik_downloaded
 
-    - name: Traefik Version anzeigen
-      ansible.builtin.debug:
-        var: traefik_version_output.stdout
+    - name: Traefik Installation
+      block:
+        - name: Traefik Entpacken
+          ansible.builtin.unarchive:
+            src: /tmp/traefik.tat.gz
+            dest: /tmp
+            remote_src: true
+        - name: Traefik Binry instalieren
+          ansible.builtin.copy:
+            remote_src: true
+            src: /tmp/traefik
+            dest: /usr/local/bin/traefik
+            owner: root
+            group: root
+            mode: "0755"
+        - name: Traefik Version prüfen
+          ansible.builtin.command:
+            argv:
+              - /usr/local/bin/traefik
+              - version
+          register: traefik_version_output
+          changed_when: false
+        - name: Traefik Version anzeigen
+          ansible.builtin.debug:
+            var: traefik_version_output.stdout
+      when: traefik_downloaded.changed
 
     - name: Traefik Konfig anlegen
       ansible.builtin.file:
