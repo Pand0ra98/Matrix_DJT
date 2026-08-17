@@ -48,15 +48,18 @@
         dest: /tmp/get.acme.sh-install.sh
         mode: "0755"
 
-    - name: Achme.sh installieren
+    - name: acme.sh installieren
       ansible.builtin.command:
         argv:
           - /bin/sh
           - /tmp/get.acme.sh-install.sh
-          - --install
-          - "--email={{ EMC }}"
+          - "email={{ EMC }}"
           - --nocron
-        creates: /root/.acme.sh/acme.sh
+          - --home
+      environment:
+        HOME: /root
+          - /root/.acme.sh
+      creates: /root/.acme.sh/acme.sh
 
     - name: Let's Encrypt als Standard-CA setzen
       ansible.builtin.command:
