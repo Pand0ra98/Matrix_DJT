@@ -56,10 +56,10 @@
           - "email={{ EMC }}"
           - --nocron
           - --home
+        creates: /root/.acme.sh/acme.sh
       environment:
         HOME: /root
           - /root/.acme.sh
-      creates: /root/.acme.sh/acme.sh
 
     - name: Let's Encrypt als Standard-CA setzen
       ansible.builtin.command:
