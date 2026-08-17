@@ -49,13 +49,8 @@
         mode: "0755"
 
     - name: acme.sh installieren
-      ansible.builtin.command:
-        argv:
-          - /bin/sh
-          - /tmp/get.acme.sh-install.sh
-          - "email={{ EMC }}"
-          - --nocron
-          - --home
+      ansible.builtin.shell:
+        cmd: /bin/sh /tmp/get.acme.sh-install.sh email="{{ EMC }}" --nocron
         creates: /root/.acme.sh/acme.sh
       environment:
         HOME: /root
