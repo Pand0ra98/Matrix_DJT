@@ -1,7 +1,6 @@
 ---
 - name: Installation Nginx + achme.sh
   hosts: matrix-app-01
-  vars_files: ./vars/credentials.yaml
   become: true
 
   tasks:
@@ -54,7 +53,7 @@
           - /bin/sh
           - /tmp/get.acme.sh-install.sh
           - --install
-          - --"email={{ EMC }}"
+          - "--email={{ EMC }}"
           - --nocron
         creates: /root/.acme.sh/acme.sh
 
@@ -67,6 +66,9 @@
           - letsencrypt
       register: acme_default_ca
       changed_when: "'Changed default CA' in acme_default_ca.stdout"
+      failed_when:
+        - acme_default_ca.rc !=0
+        - "'Defautl Ca is already' not in acme_default_ca.stdout"
 
     - name: Acme.sh version prüfen
       ansible.builtin.command:
