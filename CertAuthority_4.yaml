@@ -1,0 +1,28 @@
+---
+- name: Vault Community Installation
+  hosts: matrix-ca-03
+  become: true
+
+  tasks:
+    - name: Hinzufügen der Quelle für Vault
+      become: true
+      ansible.builtin.deb822_repository:
+        name: hashicorp
+        state: present
+        signed_by: https://apt.releases.hashicorp.com/gpg
+        types: deb
+        uris: https://apt.releases.hashicorp.com
+        suites: "{{ ansible_distribution_release }}"
+      register: hashicorp_repo
+
+    - name: Update APT cache
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+      when: hashicorp_repo.changed
+
+    - name: Install Vault
+      ansible.builtin.apt:
+        name:
+          - Vault
+        state: present
