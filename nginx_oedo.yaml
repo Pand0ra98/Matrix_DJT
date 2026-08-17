@@ -85,6 +85,7 @@
         remote_src: true
     - name: Traefik Binry instalieren
       ansible.builtin.copy:
+        remote_src: true
         src: /tmp/traefik
         dest: /usr/local/bin/traefik
         owner: root
