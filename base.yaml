@@ -16,15 +16,22 @@
       loop:
         - "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIC32odfea+4HISxVhq5mkHpSAKOOWBPxBsyAjnb/v0UJ panschuetz@TJM-07645"
 
-
-    - name: Install Sudo
+    - name: Install Grundpaktete
       become: true
       become_method: ansible.builtin.su
       ansible.builtin.apt:
         update_cache: true
-        name:
-          - sudo
+        name: "{{ item }}"
         state: present
+      loop:
+        - sudo
+        - lsb-release
+        - wget
+        - curl
+        - git
+        - btop
+        - acl
+        - vim
 
     - name: Admin zur gruppe Sudo hinzufügen
       become: true
@@ -41,7 +48,7 @@
         path: /etc/ssh/sshd_config
         create: false
         line: PubkeyAuthentication yes
-        search_string: '#PubkeyAuthentication yes'
+        search_string: "#PubkeyAuthentication yes"
         owner: root
         group: root
         mode: "0644"
@@ -53,7 +60,6 @@
         name: sshd
         state: restarted
       notify: Server-neustarten
-
 
   handlers:
     - name: Server neustarten
