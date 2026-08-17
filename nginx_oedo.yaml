@@ -2,6 +2,7 @@
 - name: Installation Nginx + achme.sh
   hosts: matrix-app-01
   become: true
+  vars_files: ./vars/credentials.yaml
 
   tasks:
     - name: Update packete und quellen
