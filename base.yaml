@@ -1,6 +1,6 @@
 ---
 - name: Vorbereitung der VMs
-  hosts: matrix-ca-02
+  hosts: matrix-ca-03
   remote_user: root
 
   tasks:
