@@ -19,5 +19,5 @@ CA:
       ansible_host: 10.31.42.132
       ansible_user: admin001
     matrix-ca-03:
-      ansible_host: 10.31.42.1
+      ansible_host: 10.31.42.135
       ansible_user: admin001
