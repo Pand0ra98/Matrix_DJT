@@ -147,7 +147,7 @@
 
     - name: Template übertragen
       ansible.builtin.template:
-        src: ./templates/matrix_router.j2
+        src: ./templates/matrix_router_secure.j2
         dest: /etc/traefik/dynamic/matrix.yml
         group: traefik
         owner: root
