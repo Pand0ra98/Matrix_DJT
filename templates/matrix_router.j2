@@ -1,0 +1,13 @@
+http:
+  routers:
+    matrix:
+      rule: "Host(`matrix.example.de`)"
+      entryPoints:
+        - web
+      service: synapse
+
+  services:
+    synapse:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8008"
