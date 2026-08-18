@@ -10,6 +10,14 @@ providers:
     directory: /etc/traefik/dynamic
     watch: true
 
+certificatesResolvers:
+  letsencrypt:
+    acme:
+      email: "{{ EMC }}"
+      storage: /var/lib/traefik/acme.json
+      dnsChallenge:
+        provider: netcup
+
 log:
   level: INFO
 
