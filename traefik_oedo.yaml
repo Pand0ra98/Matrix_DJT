@@ -105,7 +105,6 @@
           ansible.builtin.debug:
             var: traefik_version_output.stdout
 
-
     - name: Traefik Konfig anlegen
       ansible.builtin.file:
         path: /etc/traefik/traefik.yml
@@ -162,7 +161,7 @@
         group: traefik
         mode: "0600"
         modification_time: preserve
-        access_time: preseerve
+        access_time: preserve
 
     - name: Netcup Zugangsdaten
       ansible.builtin.copy:
