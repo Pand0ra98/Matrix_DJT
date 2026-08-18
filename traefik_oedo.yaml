@@ -78,7 +78,6 @@
         url: https://github.com/traefik/traefik/releases/download/v3.7.10/traefik_v3.7.10_linux_amd64.tar.gz
         dest: /tmp/traefik.tat.gz
         mode: "0644"
-        register: traefik_downloaded
 
     - name: Traefik Installation
       block:
@@ -105,7 +104,7 @@
         - name: Traefik Version anzeigen
           ansible.builtin.debug:
             var: traefik_version_output.stdout
-      when: traefik_downloaded.changed
+
 
     - name: Traefik Konfig anlegen
       ansible.builtin.file:
