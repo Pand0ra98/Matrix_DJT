@@ -8,6 +8,7 @@ Wants=network-online.target
 Type=simple
 User=traefik
 Group=traefik
+EnvironmentFile=/etc/traefik/netcup.env
 ExecStart=/usr/local/bin/traefik --configFile=/etc/traefik/traefik.yml
 Restart=on-failure
 RestartSec=5
