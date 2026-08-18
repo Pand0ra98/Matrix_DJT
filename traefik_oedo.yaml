@@ -154,3 +154,24 @@
         group: traefik
         owner: root
         mode: "0640"
+
+    - name: ACME Storge anlegen
+      ansible.builtin.file:
+        path: /var/lib/traefik/acme.json
+        state: touch
+        owner: traefik
+        group: traefik
+        mode: "0600"
+        modification_time: preserve
+        access_time: preseerve
+
+    - name: Netcup Zugangsdaten
+      ansible.builtin.copy:
+        dest: /etc/traefik/netcup.env
+        owner: root
+        group: root
+        content: |
+          NETCUP_CUSTOMER_NUMBER={{ NCUP_CN }}
+          NETCUP_API_KEY={{ A_KEY_LEG }}
+          NETCUP_API_PASSWORD={{ A_SECRET_LEG }}
+      no_log: true
