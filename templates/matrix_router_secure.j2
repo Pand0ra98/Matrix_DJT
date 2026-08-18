@@ -1,7 +1,7 @@
 http:
   routers:
     matrix:
-      rule: "Host(`matrix."{{ DOMAIN }}"`)"
+      rule: "Host(`matrix.{{ DOMAIN }}`)"
       entryPoints:
         - websecure
       service: synapse
