@@ -1,0 +1,15 @@
+http:
+  routers:
+    matrix:
+      rule: "Host(`matrix."{{ DOMAIN }}"`)"
+      entryPoints:
+        - websecure
+      service: synapse
+      tls:
+        certResolver: letsencrypt
+
+  services:
+    synapse:
+      loadBalancer:
+        servers:
+          - url: "http://127.0.0.1:8008"
