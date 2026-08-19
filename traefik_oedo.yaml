@@ -175,3 +175,24 @@
           NETCUP_API_PASSWORD='{{ A_SECRET_LEG }}'
           NETCUP_HTTP_TIMEOUT=60
       no_log: true
+
+    - name: Lego herunterladen
+      ansible.builtin.get_url:
+        url: https://github.com/go-acme/lego/releases/download/v5.3.1/lego_v5.3.1_linux_amd64.tar.gz
+        dest: /tmp/lego.tar.gz
+        mode: "0644"
+
+    - name: Lego entpacken
+      ansible.builtin.unarchive:
+        src: /tmp/lego.tar.gz
+        dest: /tmp
+        remote_src: true
+
+    - name: Lego installieren
+      ansible.builtin.copy:
+        src: /tmp/lego
+        dest: /usr/local/bin/lego
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
