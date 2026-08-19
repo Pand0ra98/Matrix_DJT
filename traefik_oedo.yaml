@@ -173,5 +173,5 @@
           NETCUP_CUSTOMER_NUMBER='{{ NCUP_CN }}'
           NETCUP_API_KEY='{{ A_KEY_LEG }}'
           NETCUP_API_PASSWORD='{{ A_SECRET_LEG }}'
-          NETCUP_HTTP_TIMEOUT='120'
+          NETCUP_HTTP_TIMEOUT=60
       no_log: true
