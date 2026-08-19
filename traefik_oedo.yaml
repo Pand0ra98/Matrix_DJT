@@ -168,8 +168,9 @@
         dest: /etc/traefik/netcup.env
         owner: root
         group: root
+        mode: "0640"
         content: |
-          NETCUP_CUSTOMER_NUMBER={{ NCUP_CN }}
-          NETCUP_API_KEY={{ A_KEY_LEG }}
-          NETCUP_API_PASSWORD={{ A_SECRET_LEG }}
+          NETCUP_CUSTOMER_NUMBER='{{ NCUP_CN }}'
+          NETCUP_API_KEY='{{ A_KEY_LEG }}'
+          NETCUP_API_PASSWORD='{{ A_SECRET_LEG }}'
       no_log: true
