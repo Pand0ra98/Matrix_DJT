@@ -1,0 +1,116 @@
+---
+- name: Installation von Nginx plus Ceretbot
+  hosts: matrix-app-01
+  become: true
+  vars_files: ./vars/credentials.yaml
+
+  tasks:
+    - name: Update packete und quellen
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: safe
+
+    - name: Traefik + Lego Entfernen
+      block:
+        - name: Lego Deinstallieren
+          ansible.builtin.file:
+            path: "{{ item }}"
+            state: absent
+          loop:
+            - /usr/local/bin/lego
+            - /tmp/lego
+            - /tmp/lego.tar.gz
+
+        - name: Stoppe Traefik
+          ansible.builtin.service:
+            name: traefik
+            state: stopped
+            enabled: false
+
+        - name: Traefik und dateien löschen
+          ansible.builtin.file:
+            state: absent
+            path: "{{ item }}"
+          loop:
+            - /etc/traefik/dynamic/matrix.yml
+            - /etc/systemd/system/traefik.service
+            - /etc/traefik/traefik.yml
+            - /usr/local/bin/traefik
+            - /tmp/traefik
+            - /tmp/traefik.tat.gz
+        - name: Traefik vezeichnisse löschen
+          ansible.builtin.file:
+            state: absent
+            path: "{{ item }}"
+          loop:
+            - /etc/traefik
+            - /var/lib/traefik
+
+        - name: Lösche Traefik gruppe
+          ansible.builtin.group:
+            name: traefik
+            state: absent
+
+        - name: Lösche Traefik benutzer
+          ansible.builtin.user:
+            name: traefik
+            state: absent
+
+    - name: Certbot Abhängigkeiten installieren
+  ansible.builtin.apt:
+    name:
+      - python3
+      - python3-venv
+    state: present
+    update_cache: true
+
+- name: Certbot Virtual Environment anlegen
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/python3
+      - -m
+      - venv
+      - /opt/certbot
+  args:
+    creates: /opt/certbot/bin/python
+
+- name: pip in Certbot Venv aktualisieren
+  ansible.builtin.pip:
+    name: pip
+    state: latest
+    executable: /opt/certbot/bin/pip
+
+- name: Certbot und netcup Plugin installieren
+  ansible.builtin.pip:
+    name:
+      - certbot
+      - certbot-dns-netcup
+    state: present
+    executable: /opt/certbot/bin/pip
+
+- name: Certbot Symlink anlegen
+  ansible.builtin.file:
+    src: /opt/certbot/bin/certbot
+    dest: /usr/local/bin/certbot
+    state: link
+
+- name: Let's Encrypt Verzeichnis anlegen
+  ansible.builtin.file:
+    path: /etc/letsencrypt
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+
+- name: Netcup Credentials für Certbot anlegen
+  ansible.builtin.copy:
+    dest: /etc/letsencrypt/netcup.ini
+    owner: root
+    group: root
+    mode: "0600"
+    content: |
+      dns_netcup_customer_id = {{ NCUP_CN }}
+      dns_netcup_api_key = {{ A_KEY_LEG }}
+      dns_netcup_api_password = {{ A_SECRET_LEG }}
+  no_log: true
