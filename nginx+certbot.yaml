@@ -58,12 +58,12 @@
             state: absent
 
     - name: Certbot Abhängigkeiten installieren
-  ansible.builtin.apt:
-    name:
-      - python3
-      - python3-venv
-    state: present
-    update_cache: true
+      ansible.builtin.apt:
+        name:
+          - python3
+          - python3-venv
+        state: present
+        update_cache: true
 
 - name: Certbot Virtual Environment anlegen
   ansible.builtin.command:
