@@ -22,11 +22,17 @@
             - /tmp/lego
             - /tmp/lego.tar.gz
 
+        - name: Prüfe ob Traefik noch läuft
+          ansible.builtin.systemd:
+            name: traefik
+          register: traefik_status
+
         - name: Stoppe Traefik
           ansible.builtin.service:
             name: traefik
             state: stopped
             enabled: false
+          when: traefik_status.status.ActiveState == "active"
 
         - name: Traefik und dateien löschen
           ansible.builtin.file:
@@ -39,6 +45,7 @@
             - /usr/local/bin/traefik
             - /tmp/traefik
             - /tmp/traefik.tat.gz
+
         - name: Traefik vezeichnisse löschen
           ansible.builtin.file:
             state: absent
@@ -47,13 +54,13 @@
             - /etc/traefik
             - /var/lib/traefik
 
-        - name: Lösche Traefik gruppe
-          ansible.builtin.group:
+        - name: Lösche Traefik benutzer
+          ansible.builtin.user:
             name: traefik
             state: absent
 
-        - name: Lösche Traefik benutzer
-          ansible.builtin.user:
+        - name: Lösche Traefik gruppe
+          ansible.builtin.group:
             name: traefik
             state: absent
 
