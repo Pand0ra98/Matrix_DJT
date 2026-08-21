@@ -1,5 +1,5 @@
 ---
-- name: Installation von Nginx plus Ceretbot
+- name: Installation von Apache2
   hosts: matrix-app-01
   become: true
   vars_files: ./vars/credentials.yaml
@@ -64,60 +64,58 @@
             name: traefik
             state: absent
 
-    - name: Certbot Abhängigkeiten installieren
+    - name: Apache Installieren
       ansible.builtin.apt:
-        name:
-          - python3
-          - python3-venv
+        name: apache2
         state: present
         update_cache: true
+      register: apahce2_installed
 
-    - name: Certbot Virtual Environment anlegen
+    - name: Apache2 Module aktivieren
+      community.general.apache2_module:
+        name: "{{ item }}"
+        state: present
+      loop:
+        - proxy
+        - proxy_http
+        - headers
+        - ssl
+        - md
+        - watchdog
+
+    - name: vhost datei für apache2 anlegen
+      ansible.builtin.file:
+        path: /etc/apache2/sites-available/matrix.conf
+        owner: root
+        group: root
+        mode: "0644"
+        state: touch
+      register: matrix_config_creadet
+
+    - name: Template übertragen
+      ansible.builtin.template:
+        src: ./templates/matrix.conf.j2
+        dest: /etc/apache2/sites-available/matrix.conf
+      when: matrix_config_creadet.exist
+
+    - name: Apache Default-Site deaktivieren
       ansible.builtin.command:
         argv:
-          - /usr/bin/python3
-          - -m
-          - venv
-          - /opt/certbot
-      args:
-        creates: /opt/certbot/bin/python
+          - a2dissite
+          - 000-default.conf
+      register: apache_default_site
+      changed_when: "'Site 000-default disabled' in apache_default_site.stdout"
 
-    - name: pip in Certbot Venv aktualisieren
-      ansible.builtin.pip:
-        name: pip
-        state: latest
-        executable: /opt/certbot/bin/pip
+    - name: Matrix Site aktivieren
+      ansible.builtin.command:
+        argv:
+          - a2ensite
+          - matrix.conf
+      register: apache_matrix_site
+      changed_when: "'Enabling site matrix' in apache_matrix_site.stdout"
 
-    - name: Certbot und netcup Plugin installieren
-      ansible.builtin.pip:
-        name:
-          - certbot
-          - certbot-dns-netcup
-        state: present
-        executable: /opt/certbot/bin/pip
-
-    - name: Certbot Symlink anlegen
-      ansible.builtin.file:
-        src: /opt/certbot/bin/certbot
-        dest: /usr/local/bin/certbot
-        state: link
-
-    - name: Let's Encrypt Verzeichnis anlegen
-      ansible.builtin.file:
-        path: /etc/letsencrypt
-        state: directory
-        owner: root
-        group: root
-        mode: "0700"
-
-    - name: Netcup Credentials für Certbot anlegen
-      ansible.builtin.copy:
-        dest: /etc/letsencrypt/netcup.ini
-        owner: root
-        group: root
-        mode: "0600"
-        content: |
-          dns_netcup_customer_id = {{ NCUP_CN }}
-          dns_netcup_api_key = {{ A_KEY_LEG }}
-          dns_netcup_api_password = {{ A_SECRET_LEG }}
-      no_log: true
+    - name: Apache neu starten
+      ansible.builtin.systemd_service:
+        name: apache2
+        state: restarted
+        enabled: true
