@@ -90,13 +90,17 @@
         group: root
         mode: "0644"
         state: touch
-      register: matrix_config_creadet
+
+    - name: Prüfe, ob vhost file vorhanden ist.
+      ansible.builtin.stat:
+        path: /etc/apache2/sites-available/matrix.conf
+      register: matrix_config_created
 
     - name: Template übertragen
       ansible.builtin.template:
         src: ./templates/matrix.conf.j2
         dest: /etc/apache2/sites-available/matrix.conf
-      when: matrix_config_creadet.state.exists
+      when: matrix_config_created.state.exists
 
     - name: Apache Default-Site deaktivieren
       ansible.builtin.command:
