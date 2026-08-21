@@ -118,6 +118,23 @@
       register: apache_matrix_site
       changed_when: "'Enabling site matrix' in apache_matrix_site.stdout"
 
+    - name: Globalen Apache ServerName setzen
+      ansible.builtin.copy:
+        dest: /etc/apache2/conf-available/servername.conf
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          ServerName matrix.pan-lab.de
+
+    - name: ServerName Config aktivieren
+      ansible.builtin.command:
+        argv:
+          - a2enconf
+          - servername
+      register: apache_servername
+      changed_when: "'Enabling conf servername' in apache_servername.stdout"
+
     - name: Apache neu starten
       ansible.builtin.systemd_service:
         name: apache2
