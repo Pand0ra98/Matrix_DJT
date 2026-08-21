@@ -65,52 +65,52 @@
         state: present
         update_cache: true
 
-- name: Certbot Virtual Environment anlegen
-  ansible.builtin.command:
-    argv:
-      - /usr/bin/python3
-      - -m
-      - venv
-      - /opt/certbot
-  args:
-    creates: /opt/certbot/bin/python
+    - name: Certbot Virtual Environment anlegen
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/python3
+          - -m
+          - venv
+          - /opt/certbot
+      args:
+        creates: /opt/certbot/bin/python
 
-- name: pip in Certbot Venv aktualisieren
-  ansible.builtin.pip:
-    name: pip
-    state: latest
-    executable: /opt/certbot/bin/pip
+    - name: pip in Certbot Venv aktualisieren
+      ansible.builtin.pip:
+        name: pip
+        state: latest
+        executable: /opt/certbot/bin/pip
 
-- name: Certbot und netcup Plugin installieren
-  ansible.builtin.pip:
-    name:
-      - certbot
-      - certbot-dns-netcup
-    state: present
-    executable: /opt/certbot/bin/pip
+    - name: Certbot und netcup Plugin installieren
+      ansible.builtin.pip:
+        name:
+          - certbot
+          - certbot-dns-netcup
+        state: present
+        executable: /opt/certbot/bin/pip
 
-- name: Certbot Symlink anlegen
-  ansible.builtin.file:
-    src: /opt/certbot/bin/certbot
-    dest: /usr/local/bin/certbot
-    state: link
+    - name: Certbot Symlink anlegen
+      ansible.builtin.file:
+        src: /opt/certbot/bin/certbot
+        dest: /usr/local/bin/certbot
+        state: link
 
-- name: Let's Encrypt Verzeichnis anlegen
-  ansible.builtin.file:
-    path: /etc/letsencrypt
-    state: directory
-    owner: root
-    group: root
-    mode: "0700"
+    - name: Let's Encrypt Verzeichnis anlegen
+      ansible.builtin.file:
+        path: /etc/letsencrypt
+        state: directory
+        owner: root
+        group: root
+        mode: "0700"
 
-- name: Netcup Credentials für Certbot anlegen
-  ansible.builtin.copy:
-    dest: /etc/letsencrypt/netcup.ini
-    owner: root
-    group: root
-    mode: "0600"
-    content: |
-      dns_netcup_customer_id = {{ NCUP_CN }}
-      dns_netcup_api_key = {{ A_KEY_LEG }}
-      dns_netcup_api_password = {{ A_SECRET_LEG }}
-  no_log: true
+    - name: Netcup Credentials für Certbot anlegen
+      ansible.builtin.copy:
+        dest: /etc/letsencrypt/netcup.ini
+        owner: root
+        group: root
+        mode: "0600"
+        content: |
+          dns_netcup_customer_id = {{ NCUP_CN }}
+          dns_netcup_api_key = {{ A_KEY_LEG }}
+          dns_netcup_api_password = {{ A_SECRET_LEG }}
+      no_log: true
