@@ -1,0 +1,17 @@
+<VirtualHost *:80>
+          ServerName matrix.pan-lab.de
+
+          RequestHeader set "X-Forwarded-Proto" "http"
+
+          AllowEncodedSlashes NoDecode
+          ProxyPreserveHost On
+
+          ProxyPass /_matrix http://127.0.0.1:8008/_matrix nocanon
+          ProxyPassReverse /_matrix http://127.0.0.1:8008/_matrix
+
+          ProxyPass /_synapse/client http://127.0.0.1:8008/_synapse/client nocanon
+          ProxyPassReverse /_synapse/client http://127.0.0.1:8008/_synapse/client
+
+          ErrorLog ${APACHE_LOG_DIR}/matrix-error.log
+          CustomLog ${APACHE_LOG_DIR}/matrix-access.log combined
+      </VirtualHost>
